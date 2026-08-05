@@ -1,0 +1,63 @@
+# cargo-deny — 供应链与许可证策略（AI 加依赖时的硬边界）
+# 文档: https://embarkstudios.github.io/cargo-deny/
+# 运行: cargo deny check
+#
+# 策略意图：
+# - 禁止未知源 / 随意 git 依赖（AI 最爱偷塞）
+# - 安全公告默认 deny
+# - 许可证白名单（宽松开源）；有新许可证时显式放行，禁止静默吞
+
+[graph]
+targets = [
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+    "aarch64-unknown-linux-gnu",
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+]
+all-features = true
+
+[advisories]
+# yanked / 已知漏洞 → 失败；ignore 必须带 reason
+ignore = []
+# 未维护 crate：先 warn，避免起步即炸；成熟后可改 deny
+unmaintained = "workspace"
+
+[licenses]
+confidence-threshold = 0.8
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Zlib",
+    "CC0-1.0",
+    "0BSD",
+    "BSL-1.0",
+    "OpenSSL",
+    "MPL-2.0",
+]
+# 例外按 crate 登记，禁止全局 allow 奇怪 license
+exceptions = []
+
+[bans]
+# 多版本依赖：warn（AI 乱加 crate 时会暴露）；成熟后可 deny
+multiple-versions = "warn"
+wildcards = "deny"
+# 禁止 AI 默认塞进的重/旧栈（按项目演进再调）
+deny = [
+    # { crate = "openssl", use-instead = "rustls" },
+    # { crate = "openssl-sys", use-instead = "rustls" },
+]
+# 允许跳过的重复依赖树在此登记 + reason
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# 需要 git 依赖时：先改这里 allow-git，并在 PR/任务说明里写 reason
+allow-git = []

@@ -1,0 +1,31 @@
+[package]
+name = "NovelAgent"
+version = "0.1.0"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+rig = "0.41.0"
+tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
+
+# AI / CI 约束：机器可执行的风格与安全默认值（见 AGENTS.md §8）
+[lints.rust]
+unsafe_code = "warn"
+unused_must_use = "deny"
+missing_debug_implementations = "warn"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# 生产路径纪律（测试里可用 expect 写不变量）
+unwrap_used = "warn"
+expect_used = "warn"
+panic = "warn"
+todo = "warn"
+unimplemented = "warn"
+# 常见 AI 坏味道
+redundant_clone = "deny"
+clone_on_copy = "deny"
+needless_collect = "warn"
+large_enum_variant = "warn"
+manual_let_else = "warn"
