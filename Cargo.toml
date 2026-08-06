@@ -4,9 +4,22 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 
+[lib]
+name = "novelagent"
+path = "src/lib.rs"
+
 [dependencies]
-rig = "0.41.0"
+anyhow = "1.0"
+arrow-array = "58"
+dotenvy = "0.15"
+# LanceDB 0.30 matches rig-lancedb 0.41; default-features off (no cloud SDKs).
+lancedb = { version = "0.30", default-features = false }
+rig = { version = "0.41.0", features = ["lancedb"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
 tokio = { version = "1.53.1", features = ["macros", "rt-multi-thread"] }
+topcoat = "0.5.0"
 
 # AI / CI 约束：机器可执行的风格与安全默认值（见 AGENTS.md §8）
 [lints.rust]

@@ -1,4 +1,8 @@
 /target
+/target-lancedb/
 .env
 .env.*
 !.env.example
+/data/
+# Local research scrapes (not product source)
+/Obsidian 文档/

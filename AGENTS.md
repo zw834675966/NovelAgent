@@ -31,15 +31,16 @@
 - 可见性默认 **私有**；`pub` 只暴露稳定边界。
 - 公共 struct **字段默认私有**（API Guidelines C-STRUCT-PRIVATE）。
 
-推荐演进（够用再加，禁止预建空架子）：
+目录结构（硬约束，见 §13.2）：
 
 ```text
 src/
-  main.rs          # 薄入口
-  lib.rs           # 库根
-  error.rs         # 类型化错误（库）或 re-export
-  <domain>/        # 按领域模块，非“utils 垃圾桶”
-tests/             # 集成测试（公共行为）
+  main.rs              # 薄入口（见 §13.1）
+  lib.rs               # 库根，re-export 公共面
+  <domain>/
+    mod.rs             # 领域入口 + 组合函数
+    <sub>.rs           # 子关注点（env / client / error / ...）
+  tests/               # 集成测试（公共行为）
 ```
 
 ---
@@ -263,7 +264,56 @@ FOLLOW-UP: <可选债务，写成 TODO(#) 或明确不跟>
 
 ---
 
-## 12. 参考索引（深挖时再开）
+## 12. 硬约束（必须遵守，违反即拒绝合并）
+
+### 12.1 薄 `main.rs`
+
+`main` 只负责：tokio runtime + 调用 `bootstrap` / 等价组合 + `println` 结果。**禁止**：
+- 任何业务逻辑（agent 构建、prompt 构造、错误处理细节）
+- `dotenvy::dotenv()` / `env::var(...)` 等环境加载（→ `app::load_environment` 或同类）
+- agent / HTTP / 文件 I/O（→ 对应领域模块）
+
+例外：`#[tokio::main]` 宏本身、`main` 内的 `?` 透传。`main` 行数应 ≤ 15。
+
+### 12.2 领域文件夹化
+
+每个领域模块必须是一个子目录：`src/<domain>/`，含 `mod.rs` + 子文件。**禁止**：
+- `src/utils.rs` / `src/helpers.rs` / `src/common.rs` 大杂烩
+- 把多个领域堆进 `src/` 顶层扁平
+- `mod.rs` 内直接堆大量实现（应拆 `.rs` 子文件）
+
+判定标准：第 3 个领域出现时，**必须**迁出顶层；当一个 `mod.rs` 超过 ~200 行，**必须**按子关注点拆文件。
+
+### 12.3 单函数 ≤ 400 行
+
+任意 `fn` / `async fn` body 不得超过 **400 行**（含 `match` 分支、闭包、`where` 块）。
+
+- 超 100 行：审查是否能拆为私有辅助函数
+- 超 200 行：必须拆，且拆分点要明显
+- 超 400 行：门禁拒绝
+
+判定方式：`rustc` 无 lint 自动测；CI 不强加，靠 §8 人工 + review。
+
+### 12.4 禁套娃（no Russian-doll）
+
+禁止以下模式（出现即重构）：
+
+| 反模式 | 例子 | 替代 |
+|--------|------|------|
+| builder-of-builder | `fn a() -> X; fn b() -> Y; fn c() -> Z;` 每层只调前者 | 一个函数，步骤内联（`?` 链） |
+| wrapper-of-wrapper | `pub fn run() { inner_run() }` 不加任何逻辑 | 让 `inner_run` 直接 `pub` |
+| module-of-re-export | `mod foo; pub use foo::*;` 嵌套 2 层以上 | 一个 re-export 层（`lib.rs`）足够 |
+| 深度 trait 抽象 | `trait A: B; trait B: C;` 仅为"多态" | 组合 + 显式类型 |
+
+判定：单步无独立语义的辅助函数、纯转发包装层 → 合并；`?` 链能展开的中间层 → 内联。
+
+### 12.5 测试可加 `#[allow]`
+
+测试模块顶部允许 `#[allow(clippy::expect_used, ...)]`；§12.3 / §12.4 在测试代码内不强制（避免 `assert!` 也被 lint 误伤业务断言）。生产路径仍严格。
+
+---
+
+## 13. 参考索引（深挖时再开）
 
 | 主题 | 源 |
 |------|----|
