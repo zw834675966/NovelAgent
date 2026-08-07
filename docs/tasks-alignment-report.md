@@ -98,3 +98,33 @@ ignored 4 = live（需 `OPENCODE_GO_API_KEY` / `COHERE_API_KEY`），与 plan Ch
 ## 7. 一句话总评（更新）
 
 **初版对齐报告核心事实成立；「假完成」的精确表述应是：Phase 完成 ≠ PR 细切片完成，且缺少交叉状态表。已用 todo PR 表 + PR Status 头 + DONE/plan 数字校正消除分叉。L0 复验 114/0/4 绿。PR-2 主动 deferred；PR-5 硬门仍 partial/deferred。**
+
+---
+
+## 8. 第三轮复验（2026-08-07，`fcd26f7` 提交后）
+
+**触发：** 用户在 `fcd26f7 docs: truth-align tasks PR status and DONE counts` 后要求"继续检查"。
+
+| 检查项 | 命令 | 结果 | 与本报告原结论一致性 |
+|--------|------|------|---------------------|
+| 工作区 | `git status` | clean | — |
+| 最近 commit | `git log --oneline -5` | `fcd26f7 docs: truth-align …` | — |
+| fmt | `cargo fmt --all --check` | **PASS**（无需 `cargo fmt --all`） | ✅ §2 |
+| clippy | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | **PASS**（0.81 s 增量） | ✅ §2 |
+| test | `cargo test --workspace --all-features` | **114 passed · 0 failed · 4 ignored** | ✅ §2 |
+| `Cargo.toml` 仍有 insta/rstest/proptest/mockall？ | grep | 无 | ✅ §3 PR-2 deferred |
+| `install-ai-tools.ps1` 仍有 cargo-insta？ | grep | 无 | ✅ §3 PR-2 deferred |
+| `ai-gate.ps1` L2 `fail-under-lines` | grep | 仍 `0` | ✅ §3 PR-5 partial |
+| `docs/COSTS.md` 存在？ | grep | 不存在 | ✅ §6（Deferred 可选债） |
+| DONE 报告数字 114？ | grep | ✅ 三处全 114（DONE L35 / plan L139 / todo L91） | ✅ §5.3 |
+| PR 切片 Status 头？ | grep | ✅ PR-2 `DEFERRED` / PR-5 `PARTIAL` | ✅ §5.4 |
+| concept 持久化（重生依赖） | `grep concept persist/src` | `persist.rs` 有 `CreateReportFile.concept` + `load_concept` | ✅ Phase 5 + PR-4 done+ |
+| `character_cmd` 6 个子命令回归 | `cargo test --lib character_cmd app` | 全绿（list/delete/regenerate 等 13 个测） | ✅ §3 PR-4 done+ |
+
+**结论：** **`fcd26f7` 修复彻底，所有事实一致**。L0 仍 114/0/4 绿；PR-2 / PR-5 余项状态与代码一致（不假装完成）；DONE 报告与 plan 计数 114 一致；无新增漂移。
+
+**已无主动必做项**。可选推进（不阻塞当前 Phase 6 收口）：
+
+1. `cargo llvm-cov --workspace --all-features --branch --html` 取真实覆盖率，决定 PR-5 硬门阈值。
+2. 写 `docs/COSTS.md`（PR-3 已登记 Deferred 可选债）。
+3. 若要开 PR-2：按 `tasks/prs/pr-02-dev-deps.md` 开工。
