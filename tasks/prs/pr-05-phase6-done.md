@@ -2,7 +2,8 @@
 
 > **Status (2026-08-07): PARTIAL → coverage 硬门 DONE**  
 > ✅ `docs/character-card-agent-done.md` 已写；README/CLAUDE 已链。  
-> ✅ **覆盖率硬门已升**（2026-08-07）：实测行覆盖 **81.91%** ≥ 80 → `ai-gate.ps1` L2 改 `--fail-under-lines 80`，复验 exit 0。78.08% 基线 → 补 10 个离线测试（embed 缺 key/假 key、vector_store RecordBatch/空流/校验短路、web utc_hms）冲过线。`--branch` 仍需 nightly（未装）。  
+> ✅ **覆盖率硬门已升**（2026-08-07）：实测行覆盖 **81.91%** ≥ 80 → `ai-gate.ps1` L2 改 `--fail-under-lines 80`，复验 exit 0。78.08% 基线 → 补 10 个离线测试（embed 缺 key/假 key、vector_store RecordBatch/空流/校验短路、web utc_hms）冲过线。  
+> ✅ **分支覆盖已用 nightly 实测**（2026-08-07）：`cargo +nightly llvm-cov --branch` → **65.55%**（238 分支/82 未覆盖）。流程：手动 `RUSTFLAGS="-C instrument-coverage -Z coverage-options=branch"` + 干净正斜杠 `LLVM_PROFILE_FILE` 跑测试 → `llvm-cov report --branch --ignore-filename-regex '\.cargo'`。**原因**：llvm-cov 0.8.7 在 nightly 1.99 下用混排反斜杠路径导致 0 profraw（stable 运行库接受、nightly 拒绝）；0.8.7 亦无 `--fail-under-branches` flag（仅 lines/functions/file-lines/regions），故分支覆盖**只测量记录、不设硬门**。gate 保持 stable 行覆盖（81.91%）。  
 > ❌ `proptest-regressions` 仍 deferred（依赖 PR-2，未开工）。  
 > Phase 6 计划口径：**L0+L1 + DONE** 即收口；80% 硬门此前为 aspirational，**现已达成（行覆盖）**。  
 > 跟踪：`tasks/todo.md` Deferred「PR-5 覆盖率硬门 [x] / proptest [ ]」。

@@ -102,9 +102,34 @@ ignored 4 = live（需 `OPENCODE_GO_API_KEY` / `COHERE_API_KEY`），与 plan Ch
 
 - 未测 `app/env.rs` / `app/agent.rs` 缺 key 路径 —— 需改 `OPENCODE_GO_API_KEY`，与 `model::client` 共享变量但锁私有 → 跨模块 flaky。逻辑等价面已被 `model/client.rs` 覆盖。
 - 未测 UI `#[procedure]` 薄包装 —— topcoat 0.5 宏把 fn 整体替换为 `const`（`topcoat-runtime-grammar/procedure.rs`），不可直接调用。项目「逻辑下沉 app/」约定已验证正确。
-- 未装 nightly —— branch 覆盖率仍缺，PR-5 验收原文的 `--branch` 半为 aspirational 遗留。
+- ~~未装 nightly~~ → **已装**（2026-08-07 第五轮，见 §10）。
 
 **结论：** PR-5 覆盖率硬门从 aspirational 落地为真实门禁（81.91% > 80%，复验 exit 0）。PR-5 剩余仅 `proptest-regressions`（依赖未开工的 PR-2）。本报告计数全部随 114→124 同步更新，无新增漂移。
+
+---
+
+## 10. 第五轮（2026-08-07）：装 nightly → 完整分支覆盖率
+
+**触发：** 用户指令「装 nightly 跑完整分支覆盖率」（对应 §8 可选推进 1 的 `--branch` 半、§9 未装 nightly 项）。
+
+**已装：** `rustup install nightly` → **1.99.0-nightly**（2026-08-06，rustc 84b36a78a）。
+
+| 步骤 | 命令 / 变更 | 结果 |
+|------|-------------|------|
+| nightly `--branch` 直跑 | `cargo +nightly llvm-cov --workspace --all-features --branch` | **失败：0 profraw**（124 测试跑了但未写盘） |
+| 隔离诊断 | nightly 无 `--branch` 同样 0 profraw；stable 正常 → 排除 `--branch` 本身 | 指向工具/toolchain 集成层 |
+| 最小复现 | `rustc -C instrument-coverage` 最小程序 + 干净正斜杠 `LLVM_PROFILE_FILE` | profraw **正常写出** |
+| 根因 | llvm-cov 0.8.7 设的 `LLVM_PROFILE_FILE` 用**混排反斜杠路径**（`C:\Users\.../.cargo/...`）→ nightly 1.99 运行库拒绝、stable 接受；0.8.7 亦无 `--fail-under-branches` flag | 工具 bug，非代码问题 |
+| 绕过流程 | 手动 `RUSTFLAGS="-C instrument-coverage -Z coverage-options=branch"` + 干净正斜杠 `LLVM_PROFILE_FILE` 跑 `cargo test` → **250 profraw** | ✅ |
+| 报告 | `cargo +nightly llvm-cov report --branch --ignore-filename-regex '\.cargo'`（排除 lance 依赖 build.rs 生成代码） | **行 81.91% / 分支 65.55%**（238 分支/82 未覆盖） |
+| 硬门复验 | `report --branch --fail-under-lines 80` | **exit 0**（行覆盖不变） |
+| 文档 | todo/pr-05/DONE 记录分支 65.55%、手动流程、根因 | 同步 |
+
+**分支覆盖解读（新情报）：** 65.55% 明显低于行覆盖 81.91% —— 缺的 82 个分支集中在 live 网络路径（embed 62.5%、vector_store 50%）、错误/边界分支（web/chat 0%、web/character 0% 的 UI 薄层分支、main 0%）。这与既有 live-key/薄接线认知一致，非领域测试缺口。
+
+**决策：** 分支覆盖**只测量记录、不设硬门**（0.8.7 无 `--fail-under-branches` flag；65.55% < 80 会打红；`--fail-under-regions` 语义不同不宜代理）。gate 保持 stable 行覆盖门禁（81.91%，稳定可靠）。nightly 分支流程手动且依赖过滤，不适合作为日常 gate 步骤。
+
+**结论：** 完整分支覆盖率已实测并记录（行 81.91% / 分支 65.55%），`--fail-under-lines 80` 在分支模式下复验通过。PR-5 验收原文的 `--branch` 半（测量）已达成，分支**硬门**半因工具限制明确不设。剩余 deferred：`proptest-regressions`（依赖 PR-2）、`docs/COSTS.md`（可选）。
 
 ---
 

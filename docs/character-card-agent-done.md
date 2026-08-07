@@ -33,7 +33,7 @@ $env:CARGO_TARGET_DIR = "$env:USERPROFILE\.cargo\novelagent-target"
 | **L0** | `pwsh -File scripts/ai-gate.ps1 -Level L0` | **PASS**（历史：2026-08-06 nextest 曾记 82；以最新 unit 行为准） |
 | **L1** | `pwsh -File scripts/ai-gate.ps1 -Level L1` | **PASS** — cargo-deny (warnings only: unmatched license allow + transitive duplicates), cargo-audit (unmaintained advisories only), cargo-machete clean |
 | Unit (workspace) | `cargo test --workspace --all-features` | **124 passed, 0 failed, 4 ignored**（2026-08-07 复跑；+10 覆盖率测试，见下） |
-| **L2 (coverage)** | `cargo llvm-cov --workspace --all-features --fail-under-lines 80` | **PASS** — 行覆盖 **81.91%**；硬门已从 0 升 80（2026-08-07） |
+| **L2 (coverage)** | `cargo llvm-cov --workspace --all-features --fail-under-lines 80` | **PASS** — 行覆盖 **81.91%**；硬门已从 0 升 80（2026-08-07）。分支覆盖 **65.55%**（nightly `--branch` 实测，2026-08-07；仅记录不设门） |
 
 Ignored live tests (need keys / network; previously green in Phase 3 / 4b):
 

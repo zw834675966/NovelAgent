@@ -110,5 +110,5 @@
 - [ ] Qdrant / fastembed 离线 fallback（feature，非 v1 默认）
 - [ ] StoryWriter 级多 Agent 长文
 - [ ] **PR-2**：dev-deps（insta / rstest / proptest / mockall）+ `cargo-insta` + L2 `proptest-regressions`（主动延期，非假装完成）
-- [x] **PR-5 覆盖率硬门**（2026-08-07）：实测行覆盖 **81.91%** ≥ 80 → `ai-gate.ps1` 已升 `--fail-under-lines 80` 并复验 exit 0（78.08% 基线 + 10 个离线测试冲过线）。**余项：proptest-regressions 仍 deferred**（依赖 PR-2）
+- [x] **PR-5 覆盖率硬门**（2026-08-07）：实测行覆盖 **81.91%** ≥ 80 → `ai-gate.ps1` 已升 `--fail-under-lines 80` 并复验 exit 0（78.08% 基线 + 10 个离线测试冲过线）。**分支覆盖 65.55% 已用 nightly 实测**（2026-08-07；`cargo +nightly llvm-cov --branch`，手动 profraw 流程绕过 0.8.7 nightly 路径 bug）。**余项：proptest-regressions 仍 deferred**（依赖 PR-2）
 - [ ] `docs/COSTS.md`（PR-3 文档债，可选）
