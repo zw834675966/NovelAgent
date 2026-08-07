@@ -1,5 +1,9 @@
 # PR-4 — Phase 5: 接入面（Topcoat 0.5 procedure + form）
 
+> **Status (2026-08-07): DONE+**  
+> create/chat 已落地；并超范围实现 list/delete/regenerate（CLI + `ui_*`）。  
+> 实现形态是 Topcoat procedure + 单页 UI，非早期稿的独立 `/characters/new` Form 路由。
+
 ## Goal
 把 `create_card` 暴露到 Topcoat 0.5 UI。**优先** `#[route(POST "/characters")]` + `Form<NewCharacter>` 表单；不引流式。
 

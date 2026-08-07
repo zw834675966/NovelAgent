@@ -77,6 +77,7 @@
 
 - [x] Task 5.1: lib 导出 + 薄 API（CLI `character-create` + Topcoat `character_create`）
 - [x] Task 5.2: chat 注入选中卡 system（CLI `character-chat` + procedure `character_chat`）
+- [x] 超 plan：`character-list` / `character-delete` / `character-regenerate`（CLI + UI `ui_*` 薄包装）
 
 ## Checkpoint E
 
@@ -87,6 +88,19 @@
 - [x] L0 `scripts/ai-gate.ps1`（并补跑 L1：deny/audit/machete）
 - [x] 更新 README / CLAUDE.md 架构段（CLI、LanceDB 首跑、character 层）
 - [x] DONE 报告（命令证据）→ `docs/character-card-agent-done.md`
+  - 测试数以本机复跑为准（2026-08-07：**114 passed / 4 ignored**）；勿再写 82
+
+## PR 切片状态（`tasks/prs/` · 细于 Phase）
+
+> Phase 勾选 = **产品垂直切片**；PR 文档 = **TDD 子步骤**。二者不同步时以本表为准。
+
+| PR | 文件 | 状态 | 说明 |
+|----|------|------|------|
+| PR-1 | `pr-01-phase4-seeds.md` | **done** | lore/memory/kg/seed 单测已落地 |
+| PR-2 | `pr-02-dev-deps.md` | **deferred** | insta/rstest/proptest/mockall **未引入**（YAGNI；见 Deferred） |
+| PR-3 | `pr-03-phase4b-vector.md` | **done** | embed + vector_store；`docs/COSTS.md` 仍缺（可选债） |
+| PR-4 | `pr-04-phase5-web.md` | **done+** | create/chat + list/delete/regenerate 超范围 |
+| PR-5 | `pr-05-phase6-done.md` | **partial** | DONE 报告已有；`fail-under-lines 80` 与 `proptest-regressions` **未**升硬门 |
 
 ## Deferred
 
@@ -95,3 +109,6 @@
 - [ ] PNG tEXt 导出
 - [ ] Qdrant / fastembed 离线 fallback（feature，非 v1 默认）
 - [ ] StoryWriter 级多 Agent 长文
+- [ ] **PR-2**：dev-deps（insta / rstest / proptest / mockall）+ `cargo-insta` + L2 `proptest-regressions`（主动延期，非假装完成）
+- [ ] **PR-5 余项**：llvm-cov `--fail-under-lines 80` 硬门；先实测覆盖率再定阈值
+- [ ] `docs/COSTS.md`（PR-3 文档债，可选）

@@ -1,5 +1,8 @@
 # PR-3 — Phase 4b: LanceDB + Cohere embed-api
 
+> **Status (2026-08-07): DONE** — `embed.rs` + `vector_store.rs` + live `#[ignore]` 测。  
+> 文档债：`docs/COSTS.md` 未写（可选，见 `tasks/todo.md` Deferred）。
+
 ## Goal
 v1 向量路径落地。**锁定栈不动**：`rig 0.41.0` + `lancedb 0.30` + Cohere `embed-multilingual-v3.0`。
 

@@ -1,6 +1,6 @@
 # Character Card Agent — DONE
 
-**Date:** 2026-08-06  
+**Date:** 2026-08-06（计数与 CLI 面 2026-08-07 校正）  
 **Milestone:** Phases 0–6 (`tasks/plan.md` · `tasks/todo.md`)  
 **Scope:** SillyTavern V2 card meta-agent (Self-Refine) + lore/memory/KG seed + LanceDB/Cohere hybrid memory + CLI/Topcoat thin surface + harness docs.
 
@@ -13,11 +13,12 @@
 | Meta-agent loop | `agent.rs` (draft → critique → refine ≤2) + `rubric.rs` |
 | Lore / memory / KG | `lorebook.rs`, `memory.rs`, `kg.rs`, `seed.rs` |
 | Vector memory (v1) | `embed.rs` (Cohere `embed-multilingual-v3.0`) + `vector_store.rs` (LanceDB) |
-| Persist | `persist.rs` → `data/characters/{slug}_{card,memory,kg,report}.json` |
-| CLI | `cargo run -- character-create …` / `character-chat <slug> …` (`app::run`) |
-| Topcoat | `web/character.rs` procedures `character_create` / `character_chat` |
+| Persist | `persist.rs` → `data/characters/{slug}_{card,memory,kg,report,concept}.json` |
+| CLI | `character-create` / `character-chat` / `character-list` / `character-delete` / `character-regenerate` / `help`（`app::run`） |
+| Topcoat | `web/character.rs` + `web/chat.rs` `ui_*`（create/chat/list/delete/regenerate） |
 | Distill map | `papers/DISTILL_character_card_agent.md` |
 | User docs | `README.md` Character section; agent map `CLAUDE.md` |
+| Alignment audit | `docs/tasks-alignment-report.md`（PR 切片 vs Phase 真相对齐） |
 
 ## Gate evidence (this machine)
 
@@ -29,9 +30,9 @@ $env:CARGO_TARGET_DIR = "$env:USERPROFILE\.cargo\novelagent-target"
 
 | Gate | Command | Result |
 |------|---------|--------|
-| **L0** | `pwsh -File scripts/ai-gate.ps1 -Level L0` | **PASS** — fmt OK, clippy OK (`-D warnings`), nextest **82 passed / 4 skipped** |
+| **L0** | `pwsh -File scripts/ai-gate.ps1 -Level L0` | **PASS**（历史：2026-08-06 nextest 曾记 82；以最新 unit 行为准） |
 | **L1** | `pwsh -File scripts/ai-gate.ps1 -Level L1` | **PASS** — cargo-deny (warnings only: unmatched license allow + transitive duplicates), cargo-audit (unmaintained advisories only), cargo-machete clean |
-| Unit (lib) | `cargo test --workspace --all-features` | **82 passed, 0 failed, 4 ignored** |
+| Unit (workspace) | `cargo test --workspace --all-features` | **114 passed, 0 failed, 4 ignored**（2026-08-07 复跑） |
 
 Ignored live tests (need keys / network; previously green in Phase 3 / 4b):
 
@@ -52,12 +53,25 @@ Local live artifacts (gitignored, when re-run):
 
 ```text
 main → load_environment → app::run
-  empty            → Topcoat (chat + character procedures)
-  character-create → create_card_live + write_create_outcome
-  character-chat   → load_card_by_slug + assemble_prompt_pack preamble → LLM
+  empty                 → Topcoat (chat + character UI)
+  character-create      → create_card_live + write_create_outcome
+  character-chat        → load_card_by_slug + assemble_prompt_pack preamble → LLM
+  character-list        → list_characters
+  character-delete      → delete_character
+  character-regenerate  → load_concept + create_card_live + write
 ```
 
 Chat injects card system/PHI only; does **not** auto-query LanceDB after create.
+
+## PR slice honesty (vs `tasks/prs/`)
+
+| PR | Status | Note |
+|----|--------|------|
+| PR-1 seeds | done | |
+| PR-2 dev-deps | **deferred** | no insta/rstest/proptest/mockall in tree |
+| PR-3 vector | done | optional `docs/COSTS.md` still missing |
+| PR-4 web | done+ | list/delete/regenerate beyond original PR text |
+| PR-5 hard gates | partial | DONE exists; llvm-cov still `--fail-under-lines 0`; no proptest L1 step |
 
 ## Deferred (not this milestone)
 
@@ -69,7 +83,8 @@ Chat injects card system/PHI only; does **not** auto-query LanceDB after create.
 - Create → LanceDB auto-index  
 - Soft critique “建议级” must_fix debt  
 - Optional Zhihu paste into DISTILL  
-- PR-5 style 80% llvm-cov hard gate (aspirational; not required by plan Phase 6)
+- **PR-2** TDD toolchain (insta / rstest / proptest / mockall) — deferred deliberately  
+- **PR-5** 80% llvm-cov hard gate + proptest-regressions promote — aspirational until coverage measured  
 
 ## DONE one-liner
 

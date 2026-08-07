@@ -1,5 +1,10 @@
 # PR-2 — Phase 6 (dev-deps): insta / rstest / proptest / mockall
 
+> **Status (2026-08-07): DEFERRED**  
+> 未开工。`Cargo.toml` 无上述 dev-deps；`install-ai-tools.ps1` 无 `cargo-insta`；`ai-gate.ps1` 无 `proptest-regressions`。  
+> Phase 6 产品门禁（L0/L1 + DONE）**不依赖**本 PR。跟踪项：`tasks/todo.md` Deferred。  
+> 若要开工：按下方 Scope 做完并改 Status → done。
+
 ## Goal
 把项目级 TDD 工具链补齐。**不改 L0/L1/L2 行为**，仅扩 dev-deps + 1 个 L2 子步骤。
 

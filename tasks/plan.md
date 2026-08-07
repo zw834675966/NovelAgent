@@ -124,20 +124,22 @@ tasks/todo.md
 - **Checkpoint 4b**：`live_lancedb_memory_zh_checkpoint_4b` 中文 ≥3 条写入 → query 命中；L1 deny/machete 过  
 - **Windows 备注**：本机仓库 `target/` 下偶发 build-script Access Denied（`bigdecimal`）；可用  
   `$env:CARGO_TARGET_DIR = "$env:USERPROFILE\.cargo\novelagent-target"`；`protoc` 已装
-### Phase 5 — 接入面（薄）✅ (2026-08-06)
+### Phase 5 — 接入面（薄）✅ (2026-08-06；UI 管理能力 2026-08-07 超范围)
 
-- CLI：`character-create <concept>` / `character-chat <slug> <msg>`（`app::run`）  
-- Topcoat：`character_create` / `character_chat` procedures（`web/character.rs`）  
-- 落盘：`data/characters/{slug}_{card,memory,kg,report}.json`（`persist.rs`）  
-- chat 注入：`assemble_prompt_pack` → preamble（未强制 LanceDB 检索片段）  
-- **Checkpoint 5**：README 小节 + offline 单测；live create 需 key（同 Phase 3）
+- CLI（`app::run`）：`character-create` / `character-chat` / `character-list` / `character-delete` / `character-regenerate` / `help`
+- Topcoat：`web/character.rs` procedures + `web/chat.rs` 的 `ui_*` 薄包装（创建 / 列表 / 对话 / 删除 / 重生）
+- 落盘：`data/characters/{slug}_{card,memory,kg,report,concept}.json`（`persist.rs`；concept 供 regenerate）
+- chat 注入：`assemble_prompt_pack` → preamble（未强制 LanceDB 检索片段）
+- **Checkpoint 5**：README 小节 + formatter / UI 薄包装单测；live create 需 key（同 Phase 3）
 
-### Phase 6 — Harness 与文档 ✅ (2026-08-06)
+### Phase 6 — Harness 与文档 ✅ (2026-08-06；计数 2026-08-07 校正)
 
-- README：Character 小节 + LanceDB/Windows `CARGO_TARGET_DIR` / protoc 首跑说明  
-- CLAUDE.md：`app::run` 分发 + `character/` 领域 + live 测命令  
-- L0 + L1 `scripts/ai-gate.ps1` 绿（82 unit pass / 4 ignored）  
+- README：Character 小节 + LanceDB/Windows `CARGO_TARGET_DIR` / protoc 首跑说明
+- CLAUDE.md：`app::run` 分发 + `character/` 领域 + live 测命令
+- L0 + L1 `scripts/ai-gate.ps1` 绿（**114 unit pass / 4 ignored**，2026-08-07 复跑）
 - **Checkpoint 6**：[`docs/character-card-agent-done.md`](../docs/character-card-agent-done.md)
+- **非 Phase 6 必做**（见 `tasks/todo.md` Deferred / PR 表）：PR-2 dev-deps；PR-5 的 llvm-cov 80% 硬门
+- PR 切片状态 SSOT：`tasks/todo.md`「PR 切片状态」表（勿仅看 `tasks/prs/*.md` 无状态头）
 
 ## Data Model (extensions.novelagent)
 

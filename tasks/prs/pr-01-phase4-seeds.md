@@ -1,5 +1,7 @@
 # PR-1 — Phase 4: lorebook / memory / kg seeds
 
+> **Status (2026-08-07): DONE** — 对应单测已在 `src/character/{lorebook,memory,kg,seed}.rs`。
+
 ## Goal
 把 Phase 4 三件（lorebook / memory meta / kg）从脚手架升到可测。**无新外部依赖**。
 
