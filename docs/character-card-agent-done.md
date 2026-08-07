@@ -32,7 +32,8 @@ $env:CARGO_TARGET_DIR = "$env:USERPROFILE\.cargo\novelagent-target"
 |------|---------|--------|
 | **L0** | `pwsh -File scripts/ai-gate.ps1 -Level L0` | **PASS**（历史：2026-08-06 nextest 曾记 82；以最新 unit 行为准） |
 | **L1** | `pwsh -File scripts/ai-gate.ps1 -Level L1` | **PASS** — cargo-deny (warnings only: unmatched license allow + transitive duplicates), cargo-audit (unmaintained advisories only), cargo-machete clean |
-| Unit (workspace) | `cargo test --workspace --all-features` | **114 passed, 0 failed, 4 ignored**（2026-08-07 复跑） |
+| Unit (workspace) | `cargo test --workspace --all-features` | **124 passed, 0 failed, 4 ignored**（2026-08-07 复跑；+10 覆盖率测试，见下） |
+| **L2 (coverage)** | `cargo llvm-cov --workspace --all-features --fail-under-lines 80` | **PASS** — 行覆盖 **81.91%**；硬门已从 0 升 80（2026-08-07） |
 
 Ignored live tests (need keys / network; previously green in Phase 3 / 4b):
 
@@ -71,7 +72,7 @@ Chat injects card system/PHI only; does **not** auto-query LanceDB after create.
 | PR-2 dev-deps | **deferred** | no insta/rstest/proptest/mockall in tree |
 | PR-3 vector | done | optional `docs/COSTS.md` still missing |
 | PR-4 web | done+ | list/delete/regenerate beyond original PR text |
-| PR-5 hard gates | partial | DONE exists; llvm-cov still `--fail-under-lines 0`; no proptest L1 step |
+| PR-5 hard gates | partial→**coverage DONE** | DONE exists; **coverage hard gate raised to `--fail-under-lines 80`** (81.91%); proptest-regressions still deferred (needs PR-2) |
 
 ## Deferred (not this milestone)
 

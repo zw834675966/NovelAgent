@@ -58,10 +58,23 @@ fn build_embedding_model(input_type: &str) -> Result<cohere::EmbeddingModel> {
 }
 
 #[cfg(test)]
-#[allow(clippy::expect_used, clippy::float_cmp)]
+#[allow(clippy::expect_used, clippy::float_cmp, unsafe_code)]
 mod tests {
     use super::*;
     use rig::embeddings::EmbeddingModel as _;
+    use std::sync::Mutex;
+
+    /// Serialises mutations to `COHERE_API_KEY` across this module's tests.
+    /// A separate lock from `model::client`'s `OPENCODE_GO_API_KEY` lock:
+    /// only this module mutates `COHERE_API_KEY`, so no cross-module race.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    fn lock() -> std::sync::MutexGuard<'static, ()> {
+        match ENV_LOCK.lock() {
+            Ok(guard) => guard,
+            Err(poisoned) => poisoned.into_inner(),
+        }
+    }
 
     #[test]
     fn model_id_is_multilingual_v3() {
@@ -70,6 +83,57 @@ mod tests {
         assert_eq!(DEFAULT_CARD_LOCALE, "zh-CN");
         assert_eq!(COHERE_INPUT_DOCUMENT, "search_document");
         assert_eq!(COHERE_INPUT_QUERY, "search_query");
+    }
+
+    #[test]
+    fn embedding_models_error_without_cohere_key() {
+        let _guard = lock();
+        let previous = env::var(COHERE_API_KEY_ENV).ok();
+        // SAFETY: `ENV_LOCK` above serialises env mutations in this module.
+        unsafe {
+            env::remove_var(COHERE_API_KEY_ENV);
+        }
+        let doc = build_document_embedding_model();
+        let query = build_query_embedding_model();
+        if let Some(value) = previous {
+            // SAFETY: `ENV_LOCK` above serialises env mutations in this module.
+            unsafe {
+                env::set_var(COHERE_API_KEY_ENV, value);
+            }
+        }
+        assert!(
+            matches!(doc, Err(CharacterError::MissingApiKey(name)) if name == COHERE_API_KEY_ENV),
+            "document builder must fail fast on missing key"
+        );
+        assert!(
+            matches!(query, Err(CharacterError::MissingApiKey(name)) if name == COHERE_API_KEY_ENV),
+            "query builder must fail fast on missing key"
+        );
+    }
+
+    #[test]
+    fn embedding_models_build_offline_with_dummy_key() {
+        let _guard = lock();
+        let previous = env::var(COHERE_API_KEY_ENV).ok();
+        // SAFETY: `ENV_LOCK` above serialises env mutations in this module.
+        unsafe {
+            env::set_var(COHERE_API_KEY_ENV, "dummy-key-not-a-real-secret");
+        }
+        let doc = build_document_embedding_model();
+        let query = build_query_embedding_model();
+        match previous {
+            Some(value) => unsafe {
+                env::set_var(COHERE_API_KEY_ENV, value);
+            },
+            None => unsafe {
+                env::remove_var(COHERE_API_KEY_ENV);
+            },
+        }
+        // `from_env` only reads the env var; no network happens until embed.
+        let doc = doc.expect("document embedding model with dummy key");
+        let query = query.expect("query embedding model with dummy key");
+        assert_eq!(doc.ndims(), COHERE_EMBED_DIMS);
+        assert_eq!(query.ndims(), COHERE_EMBED_DIMS);
     }
 
     /// Live smoke: requires network + `COHERE_API_KEY` (e.g. from `.env`).

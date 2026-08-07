@@ -88,7 +88,7 @@
 - [x] L0 `scripts/ai-gate.ps1`（并补跑 L1：deny/audit/machete）
 - [x] 更新 README / CLAUDE.md 架构段（CLI、LanceDB 首跑、character 层）
 - [x] DONE 报告（命令证据）→ `docs/character-card-agent-done.md`
-  - 测试数以本机复跑为准（2026-08-07：**114 passed / 4 ignored**）；勿再写 82
+  - 测试数以本机复跑为准（2026-08-07：**124 passed / 4 ignored**，+10 覆盖率测试）；勿再写 82/114
 
 ## PR 切片状态（`tasks/prs/` · 细于 Phase）
 
@@ -110,5 +110,5 @@
 - [ ] Qdrant / fastembed 离线 fallback（feature，非 v1 默认）
 - [ ] StoryWriter 级多 Agent 长文
 - [ ] **PR-2**：dev-deps（insta / rstest / proptest / mockall）+ `cargo-insta` + L2 `proptest-regressions`（主动延期，非假装完成）
-- [ ] **PR-5 余项**：llvm-cov `--fail-under-lines 80` 硬门；先实测覆盖率再定阈值
+- [x] **PR-5 覆盖率硬门**（2026-08-07）：实测行覆盖 **81.91%** ≥ 80 → `ai-gate.ps1` 已升 `--fail-under-lines 80` 并复验 exit 0（78.08% 基线 + 10 个离线测试冲过线）。**余项：proptest-regressions 仍 deferred**（依赖 PR-2）
 - [ ] `docs/COSTS.md`（PR-3 文档债，可选）

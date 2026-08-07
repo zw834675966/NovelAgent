@@ -1,10 +1,11 @@
 # PR-5 — Phase 6 (收口): 覆盖率硬门 + DONE 报告
 
-> **Status (2026-08-07): PARTIAL**  
+> **Status (2026-08-07): PARTIAL → coverage 硬门 DONE**  
 > ✅ `docs/character-card-agent-done.md` 已写；README/CLAUDE 已链。  
-> ❌ `ai-gate.ps1` L2 仍 `--fail-under-lines 0`（非 80）；无 `proptest-regressions`（依赖 PR-2，已 deferred）。  
-> Phase 6 计划口径：**L0+L1 + DONE** 即收口；80% 硬门为 aspirational。  
-> 跟踪：`tasks/todo.md` Deferred「PR-5 余项」。
+> ✅ **覆盖率硬门已升**（2026-08-07）：实测行覆盖 **81.91%** ≥ 80 → `ai-gate.ps1` L2 改 `--fail-under-lines 80`，复验 exit 0。78.08% 基线 → 补 10 个离线测试（embed 缺 key/假 key、vector_store RecordBatch/空流/校验短路、web utc_hms）冲过线。`--branch` 仍需 nightly（未装）。  
+> ❌ `proptest-regressions` 仍 deferred（依赖 PR-2，未开工）。  
+> Phase 6 计划口径：**L0+L1 + DONE** 即收口；80% 硬门此前为 aspirational，**现已达成（行覆盖）**。  
+> 跟踪：`tasks/todo.md` Deferred「PR-5 覆盖率硬门 [x] / proptest [ ]」。
 
 ## Goal
 把 PR-2 加的 `proptest-regressions` 与 `cargo-llvm-cov` 升级为硬门。补最终 `DONE` 证据。

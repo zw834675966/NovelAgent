@@ -136,7 +136,7 @@ tasks/todo.md
 
 - README：Character 小节 + LanceDB/Windows `CARGO_TARGET_DIR` / protoc 首跑说明
 - CLAUDE.md：`app::run` 分发 + `character/` 领域 + live 测命令
-- L0 + L1 `scripts/ai-gate.ps1` 绿（**114 unit pass / 4 ignored**，2026-08-07 复跑）
+- L0 + L1 `scripts/ai-gate.ps1` 绿（**124 unit pass / 4 ignored**，2026-08-07 复跑；+10 覆盖率测试）
 - **Checkpoint 6**：[`docs/character-card-agent-done.md`](../docs/character-card-agent-done.md)
 - **非 Phase 6 必做**（见 `tasks/todo.md` Deferred / PR 表）：PR-2 dev-deps；PR-5 的 llvm-cov 80% 硬门
 - PR 切片状态 SSOT：`tasks/todo.md`「PR 切片状态」表（勿仅看 `tasks/prs/*.md` 无状态头）

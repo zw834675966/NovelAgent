@@ -84,6 +84,30 @@ ignored 4 = live（需 `OPENCODE_GO_API_KEY` / `COHERE_API_KEY`），与 plan Ch
 
 ---
 
+## 9. 第四轮（2026-08-07）：覆盖率基线 → 补测冲 80 → 硬门落地
+
+**触发：** §8「可选推进 1」——`cargo llvm-cov` 实测覆盖率、决策 PR-5 硬门阈值。
+
+| 步骤 | 命令 / 变更 | 结果 |
+|------|-------------|------|
+| 基线（stable 行覆盖） | `cargo llvm-cov --workspace --all-features` | **78.08%**（branch 需 nightly，未装） |
+| `--branch` 尝试 | 同上 + `--branch` | 失败：`-Z coverage-options=branch` 仅 nightly |
+| 阈值决策 | 用户批准「补薄接线测试冲 80」 | — |
+| 补测试 | +10 离线测试：embed 缺 key/假 key、vector_store RecordBatch/空流/校验短路/kind 全分支、web `utc_hms`×2 | `cargo test` **124 passed / 4 ignored**；clippy `-D warnings` 绿 |
+| 复测 | `cargo llvm-cov` | **81.91%** ≥ 80 |
+| 硬门 | `ai-gate.ps1` L2 `--fail-under-lines 0` → `80` | 复验 `--fail-under-lines 80` **exit 0** |
+| 文档同步 | plan/todo/DONE/pr-05 计数 114→124；pr-05 status「coverage DONE」 | 三处一致，无双层分叉 |
+
+**刻意未做（与 §3/§5 方案 B 一致）：**
+
+- 未测 `app/env.rs` / `app/agent.rs` 缺 key 路径 —— 需改 `OPENCODE_GO_API_KEY`，与 `model::client` 共享变量但锁私有 → 跨模块 flaky。逻辑等价面已被 `model/client.rs` 覆盖。
+- 未测 UI `#[procedure]` 薄包装 —— topcoat 0.5 宏把 fn 整体替换为 `const`（`topcoat-runtime-grammar/procedure.rs`），不可直接调用。项目「逻辑下沉 app/」约定已验证正确。
+- 未装 nightly —— branch 覆盖率仍缺，PR-5 验收原文的 `--branch` 半为 aspirational 遗留。
+
+**结论：** PR-5 覆盖率硬门从 aspirational 落地为真实门禁（81.91% > 80%，复验 exit 0）。PR-5 剩余仅 `proptest-regressions`（依赖未开工的 PR-2）。本报告计数全部随 114→124 同步更新，无新增漂移。
+
+---
+
 ## 6. 残留风险（非本审计阻塞）
 
 | 项 | 级别 | 说明 |

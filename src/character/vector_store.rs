@@ -482,6 +482,101 @@ mod tests {
         assert_eq!(d.importance, 8);
     }
 
+    #[test]
+    fn memory_doc_kind_maps_all_variants() {
+        for (kind, expected) in [
+            (MemoryKind::Seed, "seed"),
+            (MemoryKind::Observation, "observation"),
+            (MemoryKind::Reflection, "reflection"),
+        ] {
+            let e = MemoryEntry {
+                id: "0".into(),
+                ts: 1,
+                kind,
+                text: "t".into(),
+                importance: 1,
+            };
+            assert_eq!(MemoryDoc::from_entry(&e).kind, expected);
+        }
+    }
+
+    #[test]
+    fn memory_docs_to_record_batch_roundtrip() {
+        let records = vec![
+            (
+                MemoryDoc {
+                    id: "0".into(),
+                    text: "雨夜便利店".into(),
+                    ts: 100,
+                    importance: 8,
+                    kind: "seed".into(),
+                },
+                rig::OneOrMany::many(vec![Embedding {
+                    document: "雨夜便利店".into(),
+                    vec: vec![1.0, 0.0, 0.0],
+                }])
+                .expect("one embedding"),
+            ),
+            (
+                MemoryDoc {
+                    id: "1".into(),
+                    text: "故人".into(),
+                    ts: 200,
+                    importance: 5,
+                    kind: "observation".into(),
+                },
+                rig::OneOrMany::many(vec![Embedding {
+                    document: "故人".into(),
+                    vec: vec![0.0, 1.0, 0.0],
+                }])
+                .expect("one embedding"),
+            ),
+        ];
+        let batch = memory_docs_to_record_batch(records, 3).expect("record batch");
+        assert_eq!(batch.num_rows(), 2);
+        for name in ["id", "text", "ts", "importance", "kind", "embedding"] {
+            assert!(
+                batch.schema().field_with_name(name).is_ok(),
+                "missing column {name}"
+            );
+        }
+    }
+
+    #[test]
+    fn memory_docs_to_record_batch_rejects_huge_dims() {
+        let err = memory_docs_to_record_batch(Vec::new(), usize::MAX).expect_err("dims overflow");
+        assert!(err.to_string().contains("out of i32 range"));
+    }
+
+    #[tokio::test]
+    async fn index_memory_stream_empty_returns_zero_without_key() {
+        let stream = MemoryStream::new("empty_test");
+        let n = index_memory_stream(&stream, "data/lancedb")
+            .await
+            .expect("empty stream indexes to zero");
+        assert_eq!(n, 0);
+    }
+
+    #[tokio::test]
+    async fn search_rejects_empty_query_without_key() {
+        let err = search_memory_hybrid("x", "   ", "data/lancedb", HybridSearchOpts::default())
+            .await
+            .expect_err("blank query rejected");
+        assert!(matches!(err, CharacterError::Validation(_)));
+    }
+
+    #[tokio::test]
+    async fn search_k_zero_returns_empty_without_key() {
+        let opts = HybridSearchOpts {
+            k: 0,
+            ..HybridSearchOpts::default()
+        };
+        let hits = search_memory_hybrid("x", "雨夜", "data/lancedb", opts)
+            .await
+            .expect("k=0 short-circuits");
+        assert!(hits.is_empty());
+    }
+
     /// Live: write ≥3 Chinese memories → query hits related text.
     ///
     /// ```text

@@ -87,7 +87,7 @@ if ($runL1) {
 # --- L2: 深度质量（慢；merge 前 / 大改行为时）---
 if ($runL2) {
     Invoke-Optional "cargo-llvm-cov" "cargo-llvm-cov" {
-        cargo llvm-cov --workspace --all-features --fail-under-lines 0
+        cargo llvm-cov --workspace --all-features --fail-under-lines 80
     }
     Invoke-Optional "cargo-mutants" "cargo-mutants" {
         cargo mutants --timeout 60 -- --all-features

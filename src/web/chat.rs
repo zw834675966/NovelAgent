@@ -475,3 +475,20 @@ async fn chat_panel() -> Result {
         </div>
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::utc_hms;
+
+    #[test]
+    fn utc_hms_is_hh_mm_ss() {
+        let s = utc_hms();
+        assert_eq!(s.len(), 8, "expected HH:MM:SS, got {s:?}");
+        assert_eq!(s.as_bytes()[2], b':');
+        assert_eq!(s.as_bytes()[5], b':');
+        assert!(
+            s.chars().filter(|c| *c != ':').all(|c| c.is_ascii_digit()),
+            "non-digit outside separators: {s:?}"
+        );
+    }
+}
