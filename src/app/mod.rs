@@ -10,7 +10,8 @@ pub mod env;
 
 pub use agent::{prompt_message, run_readiness_check, validate_user_message};
 pub use character_cmd::{
-    character_chat, character_create, character_list, format_character_list_summary,
+    character_chat, character_create, character_delete, character_list, character_regenerate,
+    format_character_list_summary, format_delete_summary,
 };
 pub use env::load_environment;
 
@@ -35,10 +36,13 @@ pub async fn bootstrap() -> Result<String> {
 /// | `character-create <concept…>` | live create + write `data/characters/` |
 /// | `character-chat <slug> <msg…>` | one turn as saved card |
 /// | `character-list` | enumerate saved cards under `data/characters/` |
+/// | `character-delete <slug>` | remove all sidecar files for a saved card |
+/// | `character-regenerate <slug>` | re-run Self-Refine with the stored concept |
 ///
 /// # Errors
 ///
-/// Missing args, create/chat/list failure, or Topcoat start failure.
+/// Missing args, create/chat/list/delete/regenerate failure, or Topcoat start
+/// failure.
 pub async fn run(args: Vec<String>) -> Result<()> {
     match args.first().map(String::as_str) {
         None => {
@@ -74,6 +78,26 @@ pub async fn run(args: Vec<String>) -> Result<()> {
             println!("{}", format_character_list_summary(&character_list()?));
             Ok(())
         }
+        Some("character-delete") => {
+            let slug = args
+                .get(1)
+                .map(String::as_str)
+                .filter(|s| !s.is_empty())
+                .context("usage: novelagent character-delete <slug>")?;
+            let summary = character_delete(slug)?;
+            println!("{summary}");
+            Ok(())
+        }
+        Some("character-regenerate") => {
+            let slug = args
+                .get(1)
+                .map(String::as_str)
+                .filter(|s| !s.is_empty())
+                .context("usage: novelagent character-regenerate <slug>")?;
+            let summary = character_regenerate(slug).await?;
+            println!("{summary}");
+            Ok(())
+        }
         Some("help" | "--help" | "-h") => {
             print_usage();
             Ok(())
@@ -90,6 +114,8 @@ fn usage_text() -> &'static str {
      novelagent character-create <concept…>\n  \
      novelagent character-chat <slug> <message…>\n  \
      novelagent character-list          # enumerate saved cards under data/characters/\n  \
+     novelagent character-delete <slug> # remove all sidecar files for a saved card\n  \
+     novelagent character-regenerate <slug> # re-run Self-Refine with the stored concept\n  \
      novelagent help"
 }
 
@@ -147,5 +173,7 @@ mod tests {
         assert!(u.contains("character-list"));
         assert!(u.contains("character-create"));
         assert!(u.contains("character-chat"));
+        assert!(u.contains("character-delete"));
+        assert!(u.contains("character-regenerate"));
     }
 }

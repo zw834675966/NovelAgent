@@ -72,6 +72,7 @@ mod tests {
         crate::character::CharacterSummary {
             slug: "苏晚".to_owned(),
             name: "苏晚".to_owned(),
+            concept: None,
             refine_rounds: Some(1),
             scores: Some(DimensionScores {
                 premise: 4,
@@ -91,6 +92,7 @@ mod tests {
         crate::character::CharacterSummary {
             slug: "ghost".to_owned(),
             name: "ghost".to_owned(),
+            concept: None,
             refine_rounds: None,
             scores: None,
             memory_entries: None,

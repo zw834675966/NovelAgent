@@ -30,6 +30,12 @@ pub struct ArtifactPaths {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct CreateReportFile {
     name: String,
+    /// Original free-text concept the user fed into `create_card_live`.
+    /// Empty when the report was written by a build that pre-dated the
+    /// concept field — older reports still load fine via `Option<String>`
+    /// via the `concept` field on [`CharacterSummary`] (None for legacy).
+    #[serde(default)]
+    concept: String,
     refine_rounds: u8,
     scores: super::rubric::DimensionScores,
     must_fix: Vec<String>,
@@ -40,13 +46,14 @@ struct CreateReportFile {
 }
 
 /// Public per-card summary returned by [`list_characters`].
-///
-/// `scores` is `None` when no `*_report.json` sits next to the card
-/// (manual save, partial recovery, etc.).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct CharacterSummary {
     pub slug: String,
     pub name: String,
+    /// Original concept, if the report file captured one. `None` for legacy
+    /// reports (before the `concept` field was added) or for entries whose
+    /// `*_report.json` is missing or unparseable.
+    pub concept: Option<String>,
     pub refine_rounds: Option<u8>,
     pub scores: Option<super::rubric::DimensionScores>,
     pub memory_entries: Option<usize>,
@@ -57,11 +64,16 @@ pub struct CharacterSummary {
 
 /// Write card + memory + kg + critique report for a successful create.
 ///
+/// The `concept` argument is the free-text prompt the user fed into
+/// `create_card_live`; it is persisted in `*_report.json` so a later
+/// "regenerate" pass can read it back without re-prompting.
+///
 /// # Errors
 ///
 /// Directory create / write failures → [`CharacterError::Io`].
 pub fn write_create_outcome(
     outcome: &CreateCardOutcome,
+    concept: &str,
     dir: impl AsRef<Path>,
 ) -> Result<ArtifactPaths> {
     let dir = dir.as_ref();
@@ -90,6 +102,7 @@ pub fn write_create_outcome(
         .map_or(0, |b| b.entries.len());
     let report = CreateReportFile {
         name: outcome.card.data.name.clone(),
+        concept: concept.to_owned(),
         refine_rounds: outcome.refine_rounds,
         scores: outcome.critique.scores.clone(),
         must_fix: outcome.critique.must_fix.clone(),
@@ -114,6 +127,26 @@ pub fn load_card_by_slug(dir: impl AsRef<Path>, slug: &str) -> Result<TavernCard
     let text = fs::read_to_string(&path)
         .map_err(|err| CharacterError::Io(format!("read {}: {err}", path.display())))?;
     Ok(serde_json::from_str(&text)?)
+}
+
+/// Load the original free-text concept stored in `{dir}/{slug}_report.json`.
+///
+/// Returns [`None`] when the report file is missing, the report was written
+/// by a build that pre-dated the `concept` field, or the JSON fails to parse.
+///
+/// # Errors
+///
+/// Filesystem errors other than "file missing" are propagated.
+pub fn load_concept(dir: impl AsRef<Path>, slug: &str) -> Result<Option<String>> {
+    let slug = character_slug(slug);
+    let path = dir.as_ref().join(format!("{slug}_report.json"));
+    let Ok(text) = fs::read_to_string(&path) else {
+        return Ok(None);
+    };
+    let Ok(report) = serde_json::from_str::<CreateReportFile>(&text) else {
+        return Ok(None);
+    };
+    Ok((!report.concept.is_empty()).then_some(report.concept))
 }
 
 /// One-line human summary for CLI / procedure responses.
@@ -183,24 +216,26 @@ pub fn list_characters(dir: impl AsRef<Path>) -> Result<Vec<CharacterSummary>> {
         };
 
         let report_path = dir.join(format!("{slug}_report.json"));
-        let (refine_rounds, scores, memory_entries, kg_edges, lore_entries) =
+        let (concept, refine_rounds, scores, memory_entries, kg_edges, lore_entries) =
             match fs::read_to_string(&report_path) {
                 Ok(rpt_text) => match serde_json::from_str::<CreateReportFile>(&rpt_text) {
                     Ok(rpt) => (
+                        (!rpt.concept.is_empty()).then_some(rpt.concept),
                         Some(rpt.refine_rounds),
                         Some(rpt.scores),
                         Some(rpt.memory_entries),
                         Some(rpt.kg_edges),
                         Some(rpt.lore_entries),
                     ),
-                    Err(_) => (None, None, None, None, None),
+                    Err(_) => (None, None, None, None, None, None),
                 },
-                Err(_) => (None, None, None, None, None),
+                Err(_) => (None, None, None, None, None, None),
             };
 
         summaries.push(CharacterSummary {
             slug: slug.clone(),
             name: card.data.name,
+            concept,
             refine_rounds,
             scores,
             memory_entries,
@@ -220,6 +255,7 @@ fn write_text(path: &Path, text: &str) -> Result<()> {
 
 /// What was actually removed by [`delete_character`].
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct DeleteOutcome {
     pub slug: String,
     pub card_removed: bool,
@@ -354,7 +390,7 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("novelagent_persist_{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         let outcome = sample_outcome();
-        let paths = write_create_outcome(&outcome, &dir).expect("write");
+        let paths = write_create_outcome(&outcome, "test concept", &dir).expect("write");
         assert!(paths.card.is_file());
         assert!(paths.memory.is_file());
         assert!(paths.kg.is_file());
@@ -401,6 +437,7 @@ mod tests {
         fs::write(&card_path, serde_json::to_string_pretty(&card).unwrap()).unwrap();
         let report = CreateReportFile {
             name: name.to_owned(),
+            concept: String::new(),
             refine_rounds: rounds,
             scores: DimensionScores {
                 premise: 4,
@@ -513,6 +550,60 @@ mod tests {
         let list = list_characters(&dir).expect("list");
         assert_eq!(list.len(), 1, "only the parseable card surfaces");
         assert_eq!(list[0].slug, "苏晚");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn delete_character_removes_all_four_files() {
+        let dir = unique_dir("delete_all");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        // write all four sidecar files explicitly; write_sample_pair only
+        // writes card + report.
+        fs::write(dir.join("苏晚_card.json"), b"{}").unwrap();
+        fs::write(dir.join("苏晚_memory.json"), b"{}").unwrap();
+        fs::write(dir.join("苏晚_kg.json"), b"{}").unwrap();
+        fs::write(dir.join("苏晚_report.json"), b"{}").unwrap();
+
+        let outcome = delete_character(&dir, "苏晚").expect("delete");
+        assert_eq!(outcome.slug, "苏晚");
+        assert!(outcome.card_removed);
+        assert!(outcome.memory_removed);
+        assert!(outcome.kg_removed);
+        assert!(outcome.report_removed);
+        assert_eq!(outcome.removed_count(), 4);
+        assert!(!dir.join("苏晚_card.json").exists());
+        assert!(!dir.join("苏晚_memory.json").exists());
+        assert!(!dir.join("苏晚_kg.json").exists());
+        assert!(!dir.join("苏晚_report.json").exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn delete_character_partial_when_only_card_exists() {
+        let dir = unique_dir("delete_partial");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("ghost_card.json"), b"{}").unwrap();
+
+        let outcome = delete_character(&dir, "ghost").expect("partial delete");
+        assert_eq!(outcome.slug, "ghost");
+        assert!(outcome.card_removed);
+        assert!(!outcome.memory_removed);
+        assert!(!outcome.kg_removed);
+        assert!(!outcome.report_removed);
+        assert_eq!(outcome.removed_count(), 1);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn delete_character_missing_slug_errors() {
+        let dir = unique_dir("delete_missing");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let err = delete_character(&dir, "never_existed").expect_err("missing");
+        assert!(matches!(err, CharacterError::Io(_)));
+        assert!(err.to_string().contains("never_existed"));
         let _ = fs::remove_dir_all(&dir);
     }
 }

@@ -36,8 +36,8 @@ pub use lorebook::{
 };
 pub use memory::{MemoryEntry, MemoryKind, MemoryStream, seed_memory_from_card};
 pub use persist::{
-    ArtifactPaths, CharacterSummary, DEFAULT_CHARACTERS_DIR, format_create_summary,
-    list_characters, load_card_by_slug, write_create_outcome,
+    ArtifactPaths, CharacterSummary, DEFAULT_CHARACTERS_DIR, DeleteOutcome, delete_character,
+    format_create_summary, list_characters, load_card_by_slug, load_concept, write_create_outcome,
 };
 pub use prompt_pack::{
     CRITIQUE_RUBRIC, META_SYSTEM, PromptPack, REFINE, USER_CREATE, assemble_prompt_pack,

@@ -6,8 +6,9 @@ use anyhow::{Context, Result, bail};
 use rig::completion::Prompt;
 
 use crate::character::{
-    CharacterSummary, DEFAULT_CHARACTERS_DIR, assemble_prompt_pack, create_card_live,
-    format_create_summary, list_characters, load_card_by_slug, write_create_outcome,
+    CharacterSummary, DEFAULT_CHARACTERS_DIR, DeleteOutcome, assemble_prompt_pack,
+    create_card_live, delete_character, format_create_summary, list_characters, load_card_by_slug,
+    load_concept, write_create_outcome,
 };
 use crate::model::build_agent_builder;
 
@@ -26,7 +27,7 @@ pub async fn character_create(concept: &str) -> Result<String> {
     let outcome = create_card_live(concept)
         .await
         .context("character create failed")?;
-    let paths = write_create_outcome(&outcome, DEFAULT_CHARACTERS_DIR)
+    let paths = write_create_outcome(&outcome, concept, DEFAULT_CHARACTERS_DIR)
         .context("failed to write character artifacts")?;
     Ok(format_create_summary(&outcome, &paths))
 }
@@ -77,6 +78,71 @@ pub async fn character_chat(slug: &str, message: &str) -> Result<String> {
 pub fn character_list() -> Result<Vec<CharacterSummary>> {
     list_characters(DEFAULT_CHARACTERS_DIR)
         .with_context(|| format!("failed to list characters under {DEFAULT_CHARACTERS_DIR}"))
+}
+
+/// Delete every sidecar file for a saved character (card + memory + kg + report).
+///
+/// Thin pass-through to [`delete_character`] that pins the on-disk root.
+/// Returns a one-line summary suitable for both CLI and Topcoat procedure use.
+///
+/// # Errors
+///
+/// Filesystem errors other than "file missing" are propagated. A slug with no
+/// surviving files surfaces as an `Io` error.
+pub fn character_delete(slug: &str) -> Result<String> {
+    let slug = slug.trim();
+    if slug.is_empty() {
+        bail!("character slug must not be empty");
+    }
+    let outcome = delete_character(DEFAULT_CHARACTERS_DIR, slug)
+        .with_context(|| format!("failed to delete character `{slug}`"))?;
+    Ok(format_delete_summary(&outcome))
+}
+
+/// One-line summary for the delete command / procedure.
+#[must_use]
+pub fn format_delete_summary(outcome: &DeleteOutcome) -> String {
+    format!(
+        "deleted slug={} removed={} (card={} memory={} kg={} report={})",
+        outcome.slug,
+        outcome.removed_count(),
+        outcome.card_removed,
+        outcome.memory_removed,
+        outcome.kg_removed,
+        outcome.report_removed
+    )
+}
+
+/// Regenerate a saved character using its stored concept.
+///
+/// Loads the original concept from `{slug}_report.json`, runs the Self-Refine
+/// loop again, and overwrites the existing sidecars. The slug is preserved
+/// (the new card uses the same name to derive the slug), so chat-as-this-slug
+/// keeps working after a regenerate.
+///
+/// # Errors
+///
+/// Missing report file, empty stored concept, LLM failure, or filesystem
+/// write errors.
+pub async fn character_regenerate(slug: &str) -> Result<String> {
+    let slug = slug.trim();
+    if slug.is_empty() {
+        bail!("character slug must not be empty");
+    }
+    let concept = load_concept(DEFAULT_CHARACTERS_DIR, slug)
+        .with_context(|| format!("failed to load concept for slug `{slug}`"))?
+        .ok_or_else(|| {
+            anyhow::anyhow!("no stored concept for slug `{slug}` (legacy report or report missing)")
+        })?;
+    if concept.trim().is_empty() {
+        bail!("stored concept for slug `{slug}` is empty");
+    }
+    let outcome = create_card_live(&concept)
+        .await
+        .context("character regenerate failed")?;
+    let paths = write_create_outcome(&outcome, &concept, DEFAULT_CHARACTERS_DIR)
+        .context("failed to write regenerated character artifacts")?;
+    Ok(format_create_summary(&outcome, &paths))
 }
 
 /// Render a character list as a one-shot human-readable block.
@@ -157,6 +223,7 @@ mod tests {
         let row = CharacterSummary {
             slug: "苏晚".to_owned(),
             name: "苏晚".to_owned(),
+            concept: None,
             refine_rounds: Some(1),
             scores: Some(DimensionScores {
                 premise: 4,
@@ -174,5 +241,33 @@ mod tests {
         assert!(out.contains("已存 1 个角色"));
         assert!(out.contains("• 苏晚"));
         assert!(out.contains("scores=4/5/4/4/5"));
+    }
+
+    #[test]
+    fn character_delete_rejects_blank() {
+        let err = character_delete("   ").expect_err("blank");
+        assert!(err.to_string().contains("empty"));
+    }
+
+    #[tokio::test]
+    async fn character_regenerate_rejects_blank() {
+        let err = character_regenerate("   ").await.expect_err("blank");
+        assert!(err.to_string().contains("empty"));
+    }
+
+    #[test]
+    fn format_delete_summary_lists_each_flag() {
+        let outcome = DeleteOutcome {
+            slug: "苏晚".to_owned(),
+            card_removed: true,
+            memory_removed: true,
+            kg_removed: true,
+            report_removed: true,
+        };
+        let s = format_delete_summary(&outcome);
+        assert!(s.contains("slug=苏晚"));
+        assert!(s.contains("removed=4"));
+        assert!(s.contains("card=true"));
+        assert!(s.contains("report=true"));
     }
 }

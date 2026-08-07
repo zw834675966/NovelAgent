@@ -11,7 +11,9 @@ use topcoat::view::{component, view};
 
 use crate::app::{
     character_chat as app_character_chat, character_create as app_character_create,
-    character_list as app_character_list, format_character_list_summary, prompt_message,
+    character_delete as app_character_delete, character_list as app_character_list,
+    character_regenerate as app_character_regenerate, format_character_list_summary,
+    prompt_message,
 };
 
 /// UTC `HH:MM:SS` for message lines (no extra time crate).
@@ -79,6 +81,24 @@ pub async fn ui_character_chat(slug: String, message: String) -> Result<String> 
     }
 }
 
+/// Local RPC wrapper for the delete-character form.
+#[procedure]
+pub async fn ui_character_delete(slug: String) -> Result<String> {
+    match app_character_delete(&slug) {
+        Ok(summary) => Ok(format!("[{}] {summary}", utc_hms())),
+        Err(err) => Ok(format!("[{}] (error: {err})", utc_hms())),
+    }
+}
+
+/// Local RPC wrapper for the regenerate-character form.
+#[procedure]
+pub async fn ui_character_regenerate(slug: String) -> Result<String> {
+    match app_character_regenerate(&slug).await {
+        Ok(summary) => Ok(format!("[{}] {summary}", utc_hms())),
+        Err(err) => Ok(format!("[{}] (error: {err})", utc_hms())),
+    }
+}
+
 #[page("/")]
 async fn home() -> Result {
     view! {
@@ -90,6 +110,23 @@ async fn home() -> Result {
                 <title>"NovelAgent Chat"</title>
                 topcoat::runtime::script()
                 topcoat::dev::script()
+                <script>
+                    "(function () {"
+                    "  function scroll() {"
+                    "    document.querySelectorAll('.log').forEach(function (el) {"
+                    "      el.scrollTop = el.scrollHeight;"
+                    "    });"
+                    "  }"
+                    "  function setup() {"
+                    "    var obs = new MutationObserver(scroll);"
+                    "    obs.observe(document.body, { childList: true, characterData: true, subtree: true });"
+                    "    scroll();"
+                    "  }"
+                    "  window.addEventListener('load', setup);"
+                    "  document.addEventListener('DOMContentLoaded', setup);"
+                    "  setTimeout(scroll, 50);"
+                    "})();"
+                </script>
                 <style>
                     "*, *::before, *::after { box-sizing: border-box; }"
                     "body { margin: 0; font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #0f1419; color: #e7e9ea; min-height: 100vh; }"
@@ -117,6 +154,7 @@ async fn home() -> Result {
                     ".row button.secondary:hover:not(:disabled) { background: #3a3f44; }"
                     "@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }"
                     ".busy-dot { display: inline-block; width: 0.45rem; height: 0.45rem; border-radius: 999px; background: #1d9bf0; margin-right: 0.4rem; vertical-align: middle; animation: pulse 1.2s ease-in-out infinite; color: transparent; font-size: 0; line-height: 0; }"
+                    ".log { scroll-behavior: smooth; }"
                 </style>
             </head>
             <body>
@@ -145,6 +183,9 @@ async fn chat_panel() -> Result {
         signal chat_draft = String::new();
         signal chat_log = String::new();
         signal chat_busy = false;
+
+        signal manage_log = String::new();
+        signal manage_busy = false;
 
         <div class="shell">
             <header>
@@ -286,6 +327,80 @@ async fn chat_panel() -> Result {
                     </button>
                 </form>
                 <div class="log">$(create_log.get())</div>
+            </section>
+
+            <section class="card">
+                <div class="row">
+                    <h2>
+                        "管理"
+                        <span class="hint">"按 slug 删除 / 重新生成"</span>
+                    </h2>
+                    <button
+                        class="clear-btn"
+                        @click=$(async |e: topcoat::runtime::Event| {
+                            e.prevent_default();
+                            manage_log.set("".to_owned());
+                        })
+                    >
+                        "清空"
+                    </button>
+                </div>
+                <div class="row">
+                    <input
+                        class="slug-input"
+                        type="text"
+                        placeholder="slug (从上面列表复制, 例: 苏晚)"
+                        :value=$(selected_slug.get())
+                        @input=$(|e: topcoat::runtime::Event| selected_slug.set(e.target.value))
+                    >
+                </div>
+                <div class="row">
+                    <button
+                        class="secondary"
+                        @click=$(async |e: topcoat::runtime::Event| {
+                            e.prevent_default();
+                            let slug = selected_slug.get();
+                            let slug_trimmed = slug.trim();
+                            if slug_trimmed.is_empty() {
+                                return;
+                            }
+                            manage_busy.set(true);
+                            let outcome = ui_character_delete(slug.clone()).await;
+                            manage_log.push_str("\n[delete] ");
+                            manage_log.push_str(slug_trimmed);
+                            manage_log.push_str("\n");
+                            manage_log.push_str(outcome.trim());
+                            manage_log.push_str("\n");
+                            manage_busy.set(false);
+                        })
+                        :disabled=$(manage_busy.get())
+                    >
+                        "删除"
+                    </button>
+                    <button
+                        class="secondary"
+                        @click=$(async |e: topcoat::runtime::Event| {
+                            e.prevent_default();
+                            let slug = selected_slug.get();
+                            let slug_trimmed = slug.trim();
+                            if slug_trimmed.is_empty() {
+                                return;
+                            }
+                            manage_busy.set(true);
+                            let outcome = ui_character_regenerate(slug.clone()).await;
+                            manage_log.push_str("\n[regenerate] ");
+                            manage_log.push_str(slug_trimmed);
+                            manage_log.push_str("\n");
+                            manage_log.push_str(outcome.trim());
+                            manage_log.push_str("\n");
+                            manage_busy.set(false);
+                        })
+                        :disabled=$(manage_busy.get())
+                    >
+                        "重新生成"
+                    </button>
+                </div>
+                <div class="log">$(manage_log.get())</div>
             </section>
 
             <section class="card">
